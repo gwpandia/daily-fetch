@@ -12,18 +12,21 @@
    - `MAIL_TO`：收件人，多位用逗號分隔
 4. 到 Actions 頁面手動執行一次（Run workflow）測試。
 
-## 觸發方式（擇一）
+## 觸發方式
 
-- **A. GitHub 排程**：workflow 預設 UTC 08:37（台北 16:37）。可能延遲 5～30 分鐘；repo 連續 60 天沒有任何 commit，GitHub 會自動停用排程。
-- **B. cron-job.org（較準時）**：刪掉 yml 裡的 `schedule:` 兩行，然後：
-  1. 建立 fine-grained token：只選這個 repo，權限 Actions = Read and write。
-  2. 在 cron-job.org 新增工作：
-     - URL：`https://api.github.com/repos/<你的帳號>/daily-fetch/actions/workflows/tw_stock_close.yml/dispatches`
-     - Method：POST
-     - Headers：`Authorization: Bearer <token>`、`Accept: application/vnd.github+json`
-     - Body：`{"ref":"main"}`
-     - 時間：週一到週五 16:25（時區 Asia/Taipei）
-  - 用這種方式觸發，不受 60 天停用的限制。
+workflow 只有 `workflow_dispatch`，由 cron-job.org 呼叫 GitHub API 觸發。workflow 裡不設 GitHub 內建排程（`schedule`），原因有兩個：負載高時會延遲，排隊的 job 可能被丟掉；公開 repo 60 天沒有活動，排程會被自動停用。
+
+1. 建立 fine-grained token：Repository access 只選 `daily-fetch`，權限 Actions = Read and write。
+2. 在 cron-job.org 新增工作：
+   - URL：`https://api.github.com/repos/gwpandia/daily-fetch/actions/workflows/tw_stock_close.yml/dispatches`
+   - Method：POST
+   - Headers：`Authorization: Bearer <token>`、`Accept: application/vnd.github+json`
+   - Body：`{"ref":"main"}`
+   - 時間：週一到週五 16:25（時區 Asia/Taipei）
+3. 在 cron-job.org 開啟這個工作的失敗通知。如果 GitHub 回錯誤（例如 5xx），那天不會寄信；收到通知後，到 Actions 頁面手動執行。
+4. 如果 token 設了到期日，到期前產生新 token，並更新 cron-job.org 的 `Authorization` 標頭。
+
+在 Actions 頁面，cron-job.org 觸發和手動觸發的 event 都是 `workflow_dispatch`。要確認是哪一種，對照 cron-job.org 的執行紀錄時間。
 
 ## 行為說明
 
